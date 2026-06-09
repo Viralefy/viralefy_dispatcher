@@ -1,0 +1,11 @@
+/media/sonne/Archives/projects/viralefy/viralefy_api_rust/target/debug/deps/tokio_rustls-2a09ba98506ee23c.d: /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/lib.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/client.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/mod.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/handshake.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/server.rs
+
+/media/sonne/Archives/projects/viralefy/viralefy_api_rust/target/debug/deps/libtokio_rustls-2a09ba98506ee23c.rlib: /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/lib.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/client.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/mod.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/handshake.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/server.rs
+
+/media/sonne/Archives/projects/viralefy/viralefy_api_rust/target/debug/deps/libtokio_rustls-2a09ba98506ee23c.rmeta: /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/lib.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/client.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/mod.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/handshake.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/server.rs
+
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/lib.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/client.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/mod.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/common/handshake.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-rustls-0.26.4/src/server.rs:

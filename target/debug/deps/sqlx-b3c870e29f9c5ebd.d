@@ -1,0 +1,12 @@
+/media/sonne/Archives/projects/viralefy/viralefy_api_rust/target/debug/deps/sqlx-b3c870e29f9c5ebd.d: /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/mod.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/ty_match.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/spec_error.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.md /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/test.md
+
+/media/sonne/Archives/projects/viralefy/viralefy_api_rust/target/debug/deps/libsqlx-b3c870e29f9c5ebd.rlib: /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/mod.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/ty_match.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/spec_error.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.md /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/test.md
+
+/media/sonne/Archives/projects/viralefy/viralefy_api_rust/target/debug/deps/libsqlx-b3c870e29f9c5ebd.rmeta: /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/mod.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/ty_match.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/spec_error.rs /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.md /home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/test.md
+
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/mod.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/ty_match.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/spec_error.rs:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/lib.md:
+/home/sonne/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-0.8.6/src/macros/test.md:
