@@ -121,13 +121,20 @@ async fn main() -> anyhow::Result<()> {
             "x-request-id",
         )));
 
-    // Router final. enforce_path_safety vai como middleware GLOBAL via
-    // axum_middleware::from_fn (executado em todas rotas inclusive _health).
+    // Router final. enforce_path_safety + enforce_hot_set como middlewares
+    // GLOBAIS. Path safety roda primeiro (bloqueia URLs malformadas antes
+    // de qualquer auth). Hot-set checa revogação de Bearer (skippa pra rotas
+    // públicas sem token). Defense in depth: core também deve checar
+    // revoked_jtis em ValidateToken (TODO em viralefy_core).
     let app = Router::new()
         .route("/_health", get(routes::health))
         .route("/_ready", get(routes::ready))
         .fallback(any(proxy::proxy_handler))
         .with_state(state.clone())
+        .layer(axum_middleware::from_fn_with_state(
+            state.clone(),
+            middleware::enforce_hot_set,
+        ))
         .layer(axum_middleware::from_fn(middleware::enforce_path_safety))
         .layer(
             ServiceBuilder::new()

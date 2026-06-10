@@ -21,6 +21,33 @@ use crate::{
     AppState,
 };
 
+/// `enforce_hot_set` — checa revogação de JTI em TODA request que carrega
+/// Bearer. Aplicado GLOBALMENTE como camada antes do proxy. Para rotas
+/// públicas (sem Bearer) é zero-cost. Para rotas autenticadas, garante
+/// que revoke via auth service → notify postgres → hot-set é honrado em
+/// ≤VAPI_REVOKED_POLL_SECS sem precisar que cada upstream re-implemente
+/// a checagem. Defense in depth: core também deve checar (TODO), mas o
+/// dispatcher é o gate primário.
+pub async fn enforce_hot_set(
+    State(state): State<AppState>,
+    req: Request<Body>,
+    next: Next,
+) -> Response {
+    if let Some(token) = extract_bearer(&req) {
+        if let Some(jwks) = &state.jwks_cache {
+            // Verifica assinatura primeiro — claims com sig inválida não
+            // bypassam só porque o JTI não está no hot-set. Se verify falha,
+            // deixamos passar pro upstream rejeitar (core valida tudo).
+            if let Ok(claims) = jwks.verify(token).await {
+                if claim_is_revoked(&claims, &state).await {
+                    return unauthorized("token revoked");
+                }
+            }
+        }
+    }
+    next.run(req).await
+}
+
 /// `enforce_path_safety` — primeiro middleware. Aplicado SEMPRE.
 pub async fn enforce_path_safety(req: Request<Body>, next: Next) -> Response {
     if !security::path_is_safe(req.uri().path()) {
