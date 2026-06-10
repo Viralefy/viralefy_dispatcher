@@ -33,7 +33,12 @@ impl Config {
             database_url: env::var("DATABASE_URL").unwrap_or_default(),
             internal_shared_secret: env::var("INTERNAL_SHARED_SECRET").unwrap_or_default(),
             jwks_cache_ttl_secs: env_u64("VAPI_JWKS_CACHE_TTL_SECS", 60)?,
-            revoked_jtis_poll_secs: env_u64("VAPI_REVOKED_POLL_SECS", 5)?,
+            // 30s reconcile fallback. LISTEN/NOTIFY entrega revogações em
+            // tempo real; o polling existe apenas pra reconciliar caso a
+            // conexão LISTEN tenha caído. Antes era 5s, o que gerava
+            // queries inúteis e log noise — sem ganho real de latência de
+            // propagação de revogação.
+            revoked_jtis_poll_secs: env_u64("VAPI_REVOKED_POLL_SECS", 30)?,
             max_body_bytes: env_u64("VAPI_MAX_BODY_BYTES", 1_048_576)? as usize, // 1 MB default
             log_level: getenv("VAPI_LOG_LEVEL", "info"),
         })

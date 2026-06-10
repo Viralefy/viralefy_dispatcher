@@ -23,6 +23,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use arc_swap::ArcSwap;
 use jsonwebtoken::{decode, decode_header, jwk::JwkSet, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 use sqlx::postgres::PgListener;
@@ -152,9 +153,16 @@ impl JWKSCache {
 
 /// RevocationSet — hot-set in-memory dos JTIs revogados, sincronizado
 /// com Postgres via bootstrap + LISTEN/NOTIFY + fallback polling.
+///
+/// Implementação `ArcSwap<HashSet<String>>`: leitor pega um snapshot Arc
+/// (load atômico, sem syscall, sem espera) e consulta. Writer (polling
+/// reconcile e NOTIFY) constrói um novo `HashSet` e troca o ponteiro em
+/// um único `store`. Isso elimina a contenção de `RwLock` que aparecia em
+/// rajadas a cada `revoked_jtis_poll_secs` segundos (o write-lock do
+/// `bootstrap()` bloqueava todos os leitores enquanto persistia).
 #[derive(Clone)]
 pub struct RevocationSet {
-    inner: Arc<RwLock<HashSet<String>>>,
+    inner: Arc<ArcSwap<HashSet<String>>>,
     db_pool: sqlx::PgPool,
 }
 
@@ -164,7 +172,7 @@ impl RevocationSet {
     pub async fn new(database_url: &str, poll_secs: u64) -> anyhow::Result<Self> {
         let pool = sqlx::PgPool::connect(database_url).await?;
         let set = Self {
-            inner: Arc::new(RwLock::new(HashSet::new())),
+            inner: Arc::new(ArcSwap::from_pointee(HashSet::new())),
             db_pool: pool.clone(),
         };
 
@@ -200,16 +208,18 @@ impl RevocationSet {
         Ok(set)
     }
 
-    /// True se jti está no hot-set.
-    pub async fn is_revoked(&self, jti: &str) -> bool {
+    /// True se jti está no hot-set. Leitor zero-lock — apenas um
+    /// `ArcSwap::load` (uma operação atômica, sem syscall).
+    pub fn is_revoked(&self, jti: &str) -> bool {
         if jti.is_empty() {
             return false;
         }
-        let g = self.inner.read().await;
-        g.contains(jti)
+        self.inner.load().contains(jti)
     }
 
     /// Recarrega o set inteiro do DB (active rows). Idempotente.
+    /// Constrói o `HashSet` novo fora do caminho de leitores e faz `store`
+    /// atômico — nunca bloqueia handlers de request.
     async fn bootstrap(&self) -> anyhow::Result<()> {
         let rows: Vec<(String,)> = sqlx::query_as(
             "SELECT jti FROM revoked_jtis WHERE expires_at > NOW()",
@@ -221,14 +231,19 @@ impl RevocationSet {
         for (jti,) in rows {
             new_set.insert(jti);
         }
-        let mut g = self.inner.write().await;
-        *g = new_set;
-        info!(count = n, "revoked_jtis bootstrap done");
+        self.inner.store(Arc::new(new_set));
+        // Polling de reconciliação acontece a cada N segundos com hot-set
+        // tipicamente vazio — log em debug pra não inundar journalctl. NOTIFY
+        // continua sendo logado em info pra rastreabilidade de revogação.
+        tracing::debug!(count = n, "revoked_jtis bootstrap done");
         Ok(())
     }
 }
 
-async fn listen_loop(pool: &sqlx::PgPool, set: Arc<RwLock<HashSet<String>>>) -> anyhow::Result<()> {
+async fn listen_loop(
+    pool: &sqlx::PgPool,
+    set: Arc<ArcSwap<HashSet<String>>>,
+) -> anyhow::Result<()> {
     let mut listener = PgListener::connect_with(pool).await?;
     listener.listen("revoked_jtis_inserted").await?;
     info!("LISTEN revoked_jtis_inserted active");
@@ -238,9 +253,13 @@ async fn listen_loop(pool: &sqlx::PgPool, set: Arc<RwLock<HashSet<String>>>) -> 
         if jti.is_empty() {
             continue;
         }
-        let mut g = set.write().await;
-        g.insert(jti.clone());
-        drop(g);
+        // Copy-on-write: clona o set atual, insere, swap. Custo proporcional
+        // ao tamanho do hot-set mas só roda na revogação (raro), não no
+        // caminho de request.
+        let current = set.load_full();
+        let mut next = (*current).clone();
+        next.insert(jti.clone());
+        set.store(Arc::new(next));
         info!(jti = %jti, "jti added to hot-set via NOTIFY");
     }
 }

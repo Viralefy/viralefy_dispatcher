@@ -39,7 +39,7 @@ pub async fn enforce_hot_set(
             // bypassam só porque o JTI não está no hot-set. Se verify falha,
             // deixamos passar pro upstream rejeitar (core valida tudo).
             if let Ok(claims) = jwks.verify(token).await {
-                if claim_is_revoked(&claims, &state).await {
+                if claim_is_revoked(&claims, &state) {
                     return unauthorized("token revoked");
                 }
             }
@@ -74,7 +74,7 @@ pub async fn optional_auth(
         if let Some(jwks) = &state.jwks_cache {
             match jwks.verify(token).await {
                 Ok(claims) => {
-                    if claim_is_revoked(&claims, &state).await {
+                    if claim_is_revoked(&claims, &state) {
                         // Não rejeita — apenas não popula extension.
                         // Caller que exige auth verá ausência.
                     } else {
@@ -110,7 +110,7 @@ pub async fn require_auth(
         Err(AuthError::InvalidSignature) => return unauthorized("invalid signature"),
         Err(_) => return unauthorized("auth error"),
     };
-    if claim_is_revoked(&claims, &state).await {
+    if claim_is_revoked(&claims, &state) {
         return unauthorized("token revoked");
     }
     req.extensions_mut().insert(claims);
@@ -124,12 +124,12 @@ fn extract_bearer(req: &Request<Body>) -> Option<&str> {
         .and_then(|s| s.strip_prefix("Bearer "))
 }
 
-async fn claim_is_revoked(claims: &Claims, state: &AppState) -> bool {
+fn claim_is_revoked(claims: &Claims, state: &AppState) -> bool {
     if claims.jti.is_empty() {
         return false;
     }
     if let Some(rev) = &state.revocation_set {
-        return rev.is_revoked(&claims.jti).await;
+        return rev.is_revoked(&claims.jti);
     }
     false
 }

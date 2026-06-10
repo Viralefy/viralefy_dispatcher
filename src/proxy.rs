@@ -16,7 +16,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use once_cell::sync::Lazy;
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Instant};
 
 use crate::{error::DispatchError, AppState};
 
@@ -111,7 +111,15 @@ static RESPONSE_HEADER_DROPLIST: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 /// `forward` faz o reverse proxy de um axum::Request pro upstream resolvido.
 /// Bidirectional streaming preservado via reqwest body stream.
 pub async fn forward(State(state): State<AppState>, req: Request) -> Result<Response, DispatchError> {
+    // Instrumentação: medimos separadamente o tempo total dentro de `forward`
+    // (overhead do dispatcher) e o tempo gasto chamando o upstream. Permite
+    // distinguir, no SLO, latência intrínseca do dispatcher de latência do
+    // backend Go. Sem essa separação, o painel "dispatcher overhead p95"
+    // mostra a latência do upstream e dispara alertas sem ação possível
+    // do lado do dispatcher.
+    let forward_started = Instant::now();
     let upstream = resolve_upstream(req.uri().path());
+    let upstream_lbl = upstream_label(upstream);
     let base = upstream.base_url(&state).trim_end_matches('/').to_string();
 
     // Reconstrói URL completa.
@@ -159,10 +167,11 @@ pub async fn forward(State(state): State<AppState>, req: Request) -> Result<Resp
     if !body_bytes.is_empty() {
         rb = rb.body(body_bytes.to_vec());
     }
+    let upstream_started = Instant::now();
     let upstream_resp = rb
         .send()
         .await
-        .map_err(|e| DispatchError::UpstreamUnavailable(format!("{}: {}", upstream_label(upstream), e)))?;
+        .map_err(|e| DispatchError::UpstreamUnavailable(format!("{}: {}", upstream_lbl, e)))?;
 
     let status = upstream_resp.status();
     let upstream_headers = upstream_resp.headers().clone();
@@ -171,7 +180,14 @@ pub async fn forward(State(state): State<AppState>, req: Request) -> Result<Resp
     let resp_body_bytes = upstream_resp
         .bytes()
         .await
-        .map_err(|e| DispatchError::UpstreamUnavailable(format!("{}: read body: {}", upstream_label(upstream), e)))?;
+        .map_err(|e| DispatchError::UpstreamUnavailable(format!("{}: read body: {}", upstream_lbl, e)))?;
+    let upstream_elapsed = upstream_started.elapsed().as_secs_f64();
+    metrics::histogram!(
+        "dispatcher_upstream_seconds",
+        "service" => "viralefy-dispatcher",
+        "upstream" => upstream_lbl,
+    )
+    .record(upstream_elapsed);
 
     let _ = parts; // não usamos por enquanto
     let mut builder = Response::builder().status(StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR));
@@ -181,9 +197,26 @@ pub async fn forward(State(state): State<AppState>, req: Request) -> Result<Resp
             builder = builder.header(name, value);
         }
     }
-    Ok(builder
+    let response = builder
         .body(Body::from(resp_body_bytes))
-        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response()))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+
+    // overhead = tempo total em `forward` − tempo do upstream. Mede só a
+    // parcela que o dispatcher pode realmente otimizar (header filter, body
+    // buffer, copy de bytes, build da response). Histograma com buckets bem
+    // finos no piso, pois o esperado é sub-millisegundo.
+    let overhead = forward_started
+        .elapsed()
+        .as_secs_f64()
+        - upstream_elapsed;
+    metrics::histogram!(
+        "dispatcher_overhead_seconds",
+        "service" => "viralefy-dispatcher",
+        "upstream" => upstream_lbl,
+    )
+    .record(overhead.max(0.0));
+
+    Ok(response)
 }
 
 fn upstream_label(u: Upstream) -> &'static str {

@@ -53,6 +53,15 @@ hyper = { version = "1", features = ["full"] }
 http = "1"
 http-body-util = "0.1"
 
+# Metrics — exposição Prometheus do próprio dispatcher (não proxiar /metrics
+# pro core era o motivo do "p95 do dispatcher" aparecer idêntico ao do core
+# no Grafana). Métricas medidas no middleware antes de qualquer proxy.
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.18", default-features = false }
+
+# Atomic swap pro hot-set — leitor-zero-lock reduz cauda do p95.
+arc-swap = "1"
+
 [dev-dependencies]
 mockito = "1"
 

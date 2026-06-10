@@ -17,6 +17,7 @@
 mod auth;
 mod config;
 mod error;
+mod metrics;
 mod middleware;
 mod observability;
 mod proxy;
@@ -51,6 +52,17 @@ pub struct AppState {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     observability::init_tracing();
+
+    // Inicializa o recorder Prometheus ANTES de qualquer outra coisa que
+    // possa emitir métricas. Se falhar, log + segue sem métricas — não vale
+    // crashar o dispatcher inteiro por causa do scrape.
+    let metrics_handle = match metrics::init() {
+        Ok(h) => Some(h),
+        Err(e) => {
+            warn!(error = %e, "metrics recorder init failed; /metrics ficará 404");
+            None
+        }
+    };
 
     let cfg = config::Config::load()?;
     info!(
@@ -126,9 +138,40 @@ async fn main() -> anyhow::Result<()> {
     // de qualquer auth). Hot-set checa revogação de Bearer (skippa pra rotas
     // públicas sem token). Defense in depth: core também deve checar
     // revoked_jtis em ValidateToken (TODO em viralefy_core).
+    //
+    // `/metrics` é registrado ANTES do `fallback` pra ser servido pelo próprio
+    // dispatcher — caso contrário cai no proxy_handler e o Prometheus acaba
+    // raspando as métricas do core (era o bug do SLO dispatcher_overhead_p95).
+    // O handle é capturado num closure pra não conflitar com o `with_state`
+    // do AppState do resto do router.
+    let metrics_route = match metrics_handle.clone() {
+        Some(handle) => get(move || {
+            let handle = handle.clone();
+            async move {
+                (
+                    axum::http::StatusCode::OK,
+                    [(
+                        axum::http::header::CONTENT_TYPE,
+                        "text/plain; version=0.0.4",
+                    )],
+                    handle.render(),
+                )
+            }
+        }),
+        // Se métricas falharem na init, devolve 503 — o scrape do Prometheus
+        // marca o target como down ao invés de "magicamente funcionar via proxy".
+        None => get(|| async {
+            (
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "metrics recorder unavailable",
+            )
+        }),
+    };
+
     let app = Router::new()
         .route("/_health", get(routes::health))
         .route("/_ready", get(routes::ready))
+        .route("/metrics", metrics_route)
         .fallback(any(proxy::proxy_handler))
         .with_state(state.clone())
         .layer(axum_middleware::from_fn_with_state(
@@ -136,6 +179,10 @@ async fn main() -> anyhow::Result<()> {
             middleware::enforce_hot_set,
         ))
         .layer(axum_middleware::from_fn(middleware::enforce_path_safety))
+        // Camada de métricas roda DEPOIS do path-safety e do hot-set pra que
+        // requests rejeitados sejam contados com o status correto (400/401)
+        // e o timing inclua todo o pipeline observável pelo cliente.
+        .layer(axum_middleware::from_fn(metrics::track))
         .layer(
             ServiceBuilder::new()
                 .layer(request_id_layer)
