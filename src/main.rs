@@ -171,6 +171,12 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/_health", get(routes::health))
         .route("/_ready", get(routes::ready))
+        // /health: alias unificado (PHASE-10 — 2026-06-11). Antes da PHASE-10
+        // `/health` caía no fallback e era proxied pro core (que TEM /health),
+        // o que mascarava o dispatcher como verde mesmo quando o dispatcher
+        // estava com problema. Registrar o alias localmente garante que o
+        // probe valida o dispatcher em si.
+        .route("/health", get(routes::health))
         .route("/metrics", metrics_route)
         .fallback(any(proxy::proxy_handler))
         .with_state(state.clone())
