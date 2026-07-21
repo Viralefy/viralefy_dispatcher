@@ -1,0 +1,14 @@
+# Configuração do cargo-audit (lida automaticamente pelo `cargo audit`).
+[advisories]
+# RUSTSEC-2023-0071 — Marvin Attack no crate `rsa` (timing sidechannel, 5.9 medium).
+# Sem versão corrigida disponível upstream.
+#
+# Por que é aceitável AQUI: o `rsa` não entra no binário. Ele é dependência do
+# `sqlx-mysql`, que só existia por causa da feature `macros` do sqlx — removida
+# (o código usa `sqlx::query_as()`, a função, nunca a macro `query_as!`).
+# `cargo tree -i rsa` não encontra caminho até a raiz; o crate permanece só no
+# Cargo.lock, que é agnóstico de feature.
+#
+# Revisar quando: sqlx publicar versão que não arraste os drivers no lock, ou o
+# advisory ganhar correção. Reavaliação obrigatória se alguém religar `macros`.
+ignore = ["RUSTSEC-2023-0071"]
